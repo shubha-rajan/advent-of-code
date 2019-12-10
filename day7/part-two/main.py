@@ -1,19 +1,21 @@
-from itertools import permutations
+from itertools import permutations, cycle
 from collections import deque
+
 OPCODE_JUMPS = {
     1:4, 2:4, 3:2, 4:2, 5:3, 6:3, 7:4, 8:4
 }
 
 def readnums():
     ints = []
-    with open("../input.txt") as f:
+    with open("test.txt") as f:
         for line in f:
             for num in line.split(","):
                 ints.append(int(num))
     return ints
 
 class Computer():
-    def __init__(self, ints, inputs):
+    def __init__(self, ints, inputs, label):
+        self.id = label
         self.ints = ints
         self.inputs = deque(inputs)
         self.pos = 0
@@ -50,25 +52,25 @@ class Computer():
             num1 = self.ints[num1]
         self.output = num1
 
-    def jump_if_true(self, num1, num2, num3):
+    def jump_if_true(self, num1, num2):
         if not int(self.param_codes[0]):
             num1 = self.ints[num1]
         if not int(self.param_codes[1]):
             num2 = self.ints[num2]
-        if num1: 
+        if num1:
             self.pos = num2
-            return True
-        return False
+        else:        
+            self.pos += 3
 
-    def jump_if_false(self, num1, num2, num3):
+    def jump_if_false(self, num1, num2):
         if not int(self.param_codes[0]):
             num1 = self.ints[num1]
         if not int(self.param_codes[1]):
             num2 = self.ints[num2]
         if not num1: 
             self.pos = num2
-            return True
-        return True
+        else:        
+            self.pos += 3
 
     def less_than(self, num1, num2, num3):
         if not int(self.param_codes[0]):
@@ -91,6 +93,7 @@ class Computer():
             self.ints[num3] = 0
 
     def intcode(self):
+        print(self.id, self.pos, self.opcode)
         while self.ints[self.pos] != 99:  
             self.instr = str(self.ints[self.pos])
             self.opcode = int(self.instr[-2:])
@@ -109,9 +112,11 @@ class Computer():
                  else: return
             elif self.opcode == 4: self.set_output(num1)
             elif self.opcode == 5: 
-                if self.jump_if_true(num1, num2, num3): continue
+                self.jump_if_true(num1, num2) 
+                continue
             elif self.opcode == 6: 
-                if self.jump_if_false(num1, num2, num3): continue
+                self.jump_if_false(num1, num2)
+                continue
             elif self.opcode == 7: self.less_than(num1, num2, num3)
             elif self.opcode == 8: self.equals(num1, num2, num3)
                 
@@ -119,22 +124,42 @@ class Computer():
         self.halted= True
 
 
-def max_signal(ints): 
-    sequences = permutations(range(5))
-    max_signal = float("-inf")
-    
-    for sequence in sequences:
-        signal = 0
-        for amp in sequence:
-            comp = Computer(ints, [signal, amp])
+
+class FeedbackLoop():
+    def __init__(self):
+        self.sequences = permutations(range(5, 10))
+        self.computers = []
+
+
+    def initialize_computers(self, sequence):
+        self.computers = []
+        for i, phase in enumerate(sequence):
+            comp = Computer(ints, [phase], i)
+            self.computers.append(comp)
             comp.intcode()
-            signal = comp.output
-        if signal > max_signal:
-            max_signal = signal
-    return max_signal
+
+    def loop(self, sequence):
+        signal = 0
+        while all([not comp.halted for comp in self.computers]):
+            for computer in self.computers:
+                computer.queue_input(signal)
+                computer.intcode()
+                signal = computer.output
+                
+        return signal
+    
+    def max_output(self):
+        max_signal = float("-inf")
+        for sequence in self.sequences:
+            loop.initialize_computers(sequence)
+            print(self.computers, max_signal)
+            signal = self.loop(sequence)
+            if signal > max_signal: max_signal = signal
+        return max_signal
 
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     ints = readnums()
-    print(max_signal(ints))
+    loop = FeedbackLoop()
+    print(loop.max_output())
